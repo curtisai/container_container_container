@@ -1,9 +1,9 @@
 # Create a container without Moby
 
 ## Before we start
-This article is derived from [a great sharing](https://youtu.be/sK5i-N34im8) regarding the underlying secrets of the container world by a [Jérôme](https://github.com/jpetazzo) many years ago.  
+This article is derived from [a great sharing](https://youtu.be/sK5i-N34im8) regarding the underlying secrets of the container world by [Jérôme](https://github.com/jpetazzo) many years ago.  
 
-In this article, we'll go through the demo Jérôme did at the end of that sharing. But
+In this article, we'll go through the demo Jérôme did at the end of that sharing.
 
 Many thanks to Mr. Jérôme Petazzoni.
 
