@@ -35,14 +35,54 @@ Many thanks to Mr. Jérôme Petazzoni.
 
 4. `sudo umoci unpack --image oci-images/alpine unpacked-images/alpine`
    > This command will unpack the oci image into two major parts: the `rootfs` and the `config.json`.
-   > `rootfs` will be the fs of your container, and the `config.json` contains all magic specs your container engine needs to start the container.
-   > Since we are doing the trickes today, the `rootfs` is all we need. But please make sure to take a loot at the `config.json` file, very imformative.
+   > `rootfs` will be the fs of your container, and the `config.json` contains all the magic specs your container engine needs to start a container.
+   > Since we are the magician that doing the tricks today, the `rootfs` is all we need. But please make sure to take a loot at the `config.json` file, very imformative.
    > ![](assets/umoci-unpack-oci-image.png)
 
 5. `btrfs subvol create images/alpine`
    > [COW][cow-storage] file system is crucial to containers. Jérôme's another [talk][docker-storage-driver-talk] explained it in depth.
    > This command creates a subvolume under `images/alpine`
 
+6. `cp -r unpacked-images/alpine/rootfs/* images/alpine`
+   > Copy the `rootfs` to the image directory.
+
+7. `btrfs subvol snapshot images/apline/ containers/tupperware`
+   > Crete a snapshot for the image file system.  
+   
+   > Every single time, when you start a container from an image, you actually create a mutatble snapshot of the image, and use this snapshot as your container's file system.  
+   > Why?  
+   > Let's consider a case, for some unkown reasons, you are insanely running 1000 mysql containers on your poor Linux host. Since most of the files in those containers are unchanged throughout the entire container lifecycle, as COW snapshots, no copy happened, and all such unchanged files are still pointing to the same original files in your image. Result? Huge disk space save.  
+   > On the other hand, even if you are rich enough to buy extra storages just for witness thousands of identical files. Copying those files to your containers takes time. As a result, you might need to wait for a long time after exected `docker run` command for your container to be ready.
+
+8. `touch containers/tupperware/THIS_IS_TUPPERWAAAARE`
+   > Great, we have our own snapshot of the `rootfs`, let's touch it.
+
+9. `chroot containers/tupperware/ sh`
+   > Change the root dir to our container's rootfs
+
+10. `unshare --mount --uts --ipc --net --pid --fork bash`
+    > This command creates new namespaces.  
+    > **pid** namespace creation is a little bit more complicated than the rest. Make sure to have `--fork` while creating a new **PID** namespace. It ensures that the executed command is performed in a child process that (being the first process in the namespace) has PID 1. Otherwise, you'll see an error message similar to **_fork: Cannot allocate memory_**. [Here][unshare-fork] is a more detailed demonstration.  
+    > Actually, we missed another flag `--mount-proc` for our **pid** namespace creation, and will need to do it afterwards, the reason why both `--fork` and `--mount-proc` are needed can be found [here][unshare-pid-ns].  
+    > [Here][unshare-mount-proc-failed] is also another example can help you understand the **pid** userspace creation better.
+
+11. `hostname tupperware`
+    > Set up the container's hostname, nothing special.
+
+12. `exec bash`
+    > You are in your tupperware container now, but not a completed container, you only have your own namespaces setup, but not yet well isolated. For example, by running `ps`, you can see only your processes, but the pid is not pid 1. Because you are still in the `/proc` of the system, and having the system view of your namespaced processes. We will fix this later
+
+13. Now, `pivot_root`.  
+    ```
+    cd containers/tupperware.
+    mkdir oldroot
+    pivot_root . oldroot/
+    ```
+    > At step 9, we used `chroot`, but it's not sufficient. The chroot utility only changes the root for the program, (`sh` in our case) from which it is called – all existing processes and programs started from another shell use the original root.  
+    > On the other hand, The `pivot_root` utility exchanges the current root filesystem with a new root filesystem.
+14. `mount -t proc none /proc`
+    > mount a proc type pseudo filesystem to your `/proc`  
+    > This is equivalent to having `--mount-proc` in our `unshare` command above. Now the `ps` command can work properly.
 
 
 [moby-dock]: https://www.docker.com/blog/docker-project-announces-open-source-a-thon-to-support-whale-and-marine-wildlife-conservation/
@@ -58,3 +98,6 @@ Many thanks to Mr. Jérôme Petazzoni.
 [rprivate-implication]: https://serverfault.com/questions/868682/implications-of-mount-make-private
 [systemd-mount-setup]: https://github.com/systemd/systemd/blob/05576809194754989f88f83c7104341c35944546/src/shared/mount-setup.c#L528
 [docker-storage-driver-talk]: https://youtu.be/9oh_M11-foU
+[unshare-fork]: https://stackoverflow.com/questions/44666700/unshare-pid-bin-bash-fork-cannot-allocate-memory
+[unshare-pid-ns]: https://unix.stackexchange.com/questions/535528/why-unshare-p-does-not-imply-f-and-mount-proc
+[unshare-mount-proc-failed]: https://bugzilla.redhat.com/show_bug.cgi?id=1390057
