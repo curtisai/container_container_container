@@ -11,12 +11,12 @@ Many thanks to Mr. Jérôme Petazzoni.
 * A running linux host with kernel header version 5.10+.
   * [btrfs][btrfs-git-link] is a tool to create [COW][cow-storage] file systems. Since it's been [deprecated][btrfs-deprecation] from RHEL, the easy yum-install life is not easy anymore. If you want to install it via the source code, kernel heder version 5.10+ is required, and I believe that having your kernel version matches with the kernel header version is a good idea (maybe not, I don't know).
   * The linux host I picked is from [aws lightsail][aws-lightsail-link] with 4 GB memory, and linux distribution is the [CentOS][centos-link] (seems like RedHat heavily involved in the CNCF timeline we live in, so I picked CentOS).
-  * Upgrade the linux kernel is very easy. (All 100+ opened tabs on my web browser agreed with me unanimously) (just kidding, 99+ at most)
+  * Upgrading the linux kernel is very easy. (All 100+ opened tabs on my web browser agreed with me unanimously) (just kidding, 99+ at most)
 
 * [btrfs][btrfs-git-link]. If you decide to install it via the source code, make sure to follow the `INSTALL` markdown file strictly.
 * [skopeo][skopeo-git] and [umoci][umoci-git]. `skopeo` is for image retrieval, coverting (from, and to [OCI][oci-webpage] image foramt). `umoci` is for image tarball unpacking. Without having a docker daemon running in our system, these two tools are our perfect alternatives.
 
-* An extra storage for COW filesystem. I don't want to re-partition the host storage, just asked for an extra storage, and attached to the host. Storage formatting and mounting tutorial can be found [here][btrfs-foramt-mount]
+* An extra storage for the COW filesystem. I don't want to re-partition the host storage and attached an extra storage to the host. Storage formatting and mounting tutorial can be found [here][btrfs-foramt-mount]
 
 * Last but not least, some useful commands can help you observe the entire lifecycle of the namespaces.
   * `lsns` can list all the namespaces with thier init PIDs
@@ -58,8 +58,7 @@ Many thanks to Mr. Jérôme Petazzoni.
    > Every single time, when you start a container from an image, you actually create a mutatble snapshot of the image, and use this snapshot as your container's file system.  
    > Why?  
    > Let's consider a case, for some unkown reasons, you are insanely running 1000 mysql containers on your poor Linux host. Since most of the files in those containers are unchanged throughout the entire container lifecycle, as COW snapshots, no copy happened, and all such unchanged files are still pointing to the same original files in your image. Result? Huge disk space save.  
-   > On the other hand, even if you are rich enough to buy extra storages just for witness thousands of identical files. Copying those files to your containers takes time. As a result, you might need to wait for a long time after exected `docker run` command for your container to be ready.
-
+   > On the other hand, even if you are rich enough to buy extra storages just to witness thousands of identical files. Copying those files to your containers still takes time. As a result, you might need to wait for a long time for your container to be ready after exected `docker run` command.
 8. `touch containers/tupperware/THIS_IS_TUPPERWAAAARE`
    > Great, we have our own snapshot of the `rootfs`, let's touch it.
 
@@ -87,7 +86,7 @@ Many thanks to Mr. Jérôme Petazzoni.
     ```
     > At step 9, we used `chroot` to take a quick look at our container's `rootfs`, but it's not sufficient. The chroot utility only changes the root for the program, (`sh` in our case) from which it is called – all existing processes and programs started from another shell use the original root.  
     > On the other hand, The `pivot_root` utility exchanges the current root filesystem with a new root filesystem.  
-    > > You may encounter an error says **Invalid argument**. According to Jérôme, to make `pivot_root` work properly, you need to have the new root be close the the top level of the file system. So, following commands will do the job.  
+    > > You may encounter an error says **Invalid argument**. According to Jérôme, to make `pivot_root` work properly, you need to have the new root be close to the the top level of the file system. So, following commands will do the job.  
     > > `mount --bind /btrfs-data/containers/tupperware/ /btrfs-data/containers/tupperware/`  
     > > This command converts your directory into a mount  
     > > `mount --move /btrfs-data/containers/ /btrfs-data/`  
