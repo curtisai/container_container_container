@@ -18,6 +18,10 @@ Many thanks to Mr. Jérôme Petazzoni.
 
 * An extra storage for COW filesystem. I don't want to re-partition the host storage, just asked for an extra storage, and attached to the host. Storage formatting and mounting tutorial can be found [here][btrfs-foramt-mount]
 
+* Last but not least, some useful commands can help you observe the entire lifecycle of the namespaces.
+  * `lsns` can list all the namespaces with thier init PIDs
+  * `nsenter` allows you to jump into different namespaces.
+
 ## Step by Step Breakdown
 1. `mount --make-rprivate /`
    > In short, this line will prevent our container file system from bleeding out.  
@@ -95,7 +99,7 @@ Many thanks to Mr. Jérôme Petazzoni.
 
 15. `mount` command now can still see the mounts in your host. Use `umount -a` to do the cleanup, the `oldroot` removal is a little bit tricky, `umount -l /oldroot/`. Since the `/proc` is also unmounted, `mount -t proc none /proc` to get it back.
 
-16. TBD
+16. Networking. TBD
 
 
 [moby-dock]: https://www.docker.com/blog/docker-project-announces-open-source-a-thon-to-support-whale-and-marine-wildlife-conservation/
